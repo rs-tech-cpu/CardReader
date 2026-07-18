@@ -4,6 +4,17 @@
 <dict>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.example.cardReader1</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>cardreader</string>
+			</array>
+		</dict>
+	</array>
 	<key>NFCReaderUsageDescription</key>
 	<string>This app uses NFC to read contactless cards and complete tap-to-pay transactions.</string>
 	<key>com.apple.developer.nfc.readersession.iso7816.select-identifiers</key>
