@@ -4,6 +4,8 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>Aurora Goods — Demo Store</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛍️</text></svg>" />
+<meta name="theme-color" content="#0f0c29" />
 <style>
   :root {
     --bg-top: #0f0c29;
@@ -136,6 +138,17 @@
   .checkout:disabled { opacity: .5; box-shadow: none; cursor: default; }
   .checkout:active:not(:disabled) { transform: scale(0.98); }
   .hint { text-align: center; font-size: 11px; color: var(--silver-dim); margin-top: 10px; }
+
+  #toast {
+    position: fixed; left: 50%; bottom: 28px; transform: translate(-50%, 20px);
+    max-width: 90vw; z-index: 50;
+    background: rgba(20, 18, 31, 0.95); color: var(--silver);
+    border: 1px solid var(--glass-border); border-radius: 14px;
+    padding: 14px 18px; font-size: 13px; text-align: center; line-height: 1.4;
+    opacity: 0; pointer-events: none; transition: opacity .25s, transform .25s;
+    box-shadow: 0 10px 30px -8px rgba(0,0,0,.6);
+  }
+  #toast.show { opacity: 1; transform: translate(-50%, 0); }
 </style>
 </head>
 <body>
@@ -177,6 +190,8 @@
     </div>
   </aside>
 
+  <div id="toast" role="status" aria-live="polite"></div>
+
 <script>
   // ---- Fake catalogue -------------------------------------------------------
   const PRODUCTS = [
@@ -190,8 +205,21 @@
     { id: 'p8', name: 'Ember Coffee Mug',  cat: 'Kitchen',    price: 18.00,  icon: '☕', grad: 'linear-gradient(135deg,#b79a55,#5c4a1e)' },
   ];
 
-  // Change this if you host the app deep link under a different scheme/host.
-  const DEEP_LINK = (amount) => `cardreader://tap?amount=${amount.toFixed(2)}`;
+  // The Android app's package id (must match applicationId in build.gradle.kts).
+  const ANDROID_PACKAGE = 'com.example.card_reader_1';
+
+  // Build the link that hands the amount to the app. Android Chrome reliably
+  // opens `intent://` URLs (plain custom-scheme links are often ignored),
+  // so we use those on Android and the custom scheme everywhere else.
+  function deepLink(amount) {
+    const amt = amount.toFixed(2);
+    const isAndroid = /android/i.test(navigator.userAgent || '');
+    if (isAndroid) {
+      return `intent://tap?amount=${amt}#Intent;scheme=cardreader;` +
+             `package=${ANDROID_PACKAGE};end`;
+    }
+    return `cardreader://tap?amount=${amt}`;
+  }
 
   const cart = new Map(); // id -> qty
 
@@ -271,11 +299,31 @@
   function openCart() { $('drawer').classList.add('open'); $('overlay').classList.add('open'); }
   function closeCart() { $('drawer').classList.remove('open'); $('overlay').classList.remove('open'); }
 
+  function toast(msg, ms = 3000) {
+    const el = $('toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(toast._t);
+    toast._t = setTimeout(() => el.classList.remove('show'), ms);
+  }
+
   function checkout() {
     const total = cartTotal();
     if (total <= 0) return;
-    // Hand the amount to the Platinum Reader app via deep link.
-    window.location.href = DEEP_LINK(total);
+
+    toast('Opening Platinum Reader…');
+
+    // Heuristic: if the app opens, this tab gets backgrounded (document.hidden).
+    // If we're still visible ~1.5s later, no app handled the link.
+    const t0 = Date.now();
+    setTimeout(() => {
+      if (!document.hidden && Date.now() - t0 < 2500) {
+        toast('Couldn’t open the app. Open this page on the phone that has Platinum Reader installed.', 6000);
+      }
+    }, 1500);
+
+    // Hand the amount to the Platinum Reader app.
+    window.location.href = deepLink(total);
   }
 
   $('cartBtn').addEventListener('click', openCart);
